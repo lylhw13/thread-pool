@@ -22,8 +22,7 @@ typedef enum {
 
 typedef enum {
     no_shutdown = 0,
-    shutdown_nowait,    /* immediate shutdown */
-    // shutdown_waitcurr,           /* after the current job done */
+    shutdown_immediate,    /* immediate shutdown */
     shutdown_waitall,       /* after all jobs done */
 } threadpoll_shutdown_t;
 

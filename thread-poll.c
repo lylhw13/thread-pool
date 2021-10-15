@@ -25,7 +25,7 @@ void* threadpoll_do_job(void * threadpoll)
         while ((tp->jobsnum == 0) && (!tp->shutdown))
             pthread_cond_wait(&(tp->notify), &(tp->job_lock));
 
-        if (tp->shutdown == shutdown_nowait || 
+        if (tp->shutdown == shutdown_immediate || 
             (tp->shutdown == shutdown_waitall && tp->jobsnum == 0)) {
                 LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
@@ -40,8 +40,9 @@ void* threadpoll_do_job(void * threadpoll)
 
         (*(job.jobfun))(job.args);
     }
-    tp->workersnum--;
+    // remove this pthread
 
+    // LOGD("quit job")
     pthread_mutex_unlock(&(tp->job_lock));
     pthread_exit(NULL);
     return NULL;
@@ -49,8 +50,8 @@ void* threadpoll_do_job(void * threadpoll)
 
 void threadpoll_add_worker(threadpoll_t *tp)
 {
-    // fprintf(stderr, "add work\n");
     // LOGD("%s\n", __FUNCTION__);
+    pthread_mutex_lock(&(tp->job_lock));
 
     pthread_mutex_lock(&(tp->worker_lock));
     // LOGD("worker lock\n");
@@ -60,10 +61,8 @@ void threadpoll_add_worker(threadpoll_t *tp)
     if (!worker)
         error("create worker\n");
 
-    // LOGD("before create\n");
     if (pthread_create(&(worker->thread), NULL, &threadpoll_do_job, (void *)tp) != 0)
         error("pthread create\n");
-    // LOGD("after create\n");
     
 
     if (tp->worker == NULL) {
@@ -89,6 +88,7 @@ void threadpoll_add_worker(threadpoll_t *tp)
     LOGD("woker num %d\n", tp->workersnum);
 
     pthread_mutex_unlock(&(tp->worker_lock));
+    pthread_mutex_unlock(&(tp->job_lock));
     // LOGD("worker unlock\n");
 
 }
@@ -131,20 +131,22 @@ err:
 
 int threadpoll_add_job(threadpoll_t *tp, job_t *job)
 {
-    // LOGD(__FUNCTION__);
     LOGD("%s\n", __FUNCTION__);
     int err = 0;
     if (tp == NULL || job->jobfun == NULL)
         return threadpoll_invalid;
 
     if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
+        LOGD("lock error");
         return threadpoll_lock_failure;
     }
 
     if (tp->job_head == NULL)
         tp->job_head = job;
-    else
+    else {
+        job->next = tp->job_head->next;
         tp->job_head->next = job;
+    }
 
     tp->jobsnum++;
 
