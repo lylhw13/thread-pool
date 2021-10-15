@@ -18,7 +18,7 @@ typedef struct worker {
 typedef enum {
     fix_num = 0,
     dynamic_num,
-} threadpoll_dynamic_t;
+} threadpoll_dynamic_t; // ratio
 
 typedef enum {
     no_shutdown = 0,
@@ -29,7 +29,8 @@ typedef enum {
 
 
 typedef struct threadpoll {
-    pthread_mutex_t lock;
+    pthread_mutex_t worker_lock;
+    pthread_mutex_t job_lock;
     pthread_cond_t notify;
 
     int shutdown;
@@ -50,8 +51,15 @@ typedef enum {
 
 
 #define MAX_THREAD_NUM 64
-#define DEFAULT_THREAD_NUM 8
+#define DEFAULT_THREAD_NUM 4
 #define MIN_THREAD_NUM 4
+
+threadpoll_t *threadpoll_init(threadpoll_dynamic_t dyanmic);
+
+int threadpoll_add_job(threadpoll_t *tp, job_t *job);
+void threadpool_destory(threadpoll_t *tp);
+
+#define LOGD(...) fprintf(stderr, __VA_ARGS__)
 
 #endif
 
