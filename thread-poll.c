@@ -39,6 +39,8 @@ void* threadpoll_do_job(void * threadpoll)
 
 
         (*(job.jobfun))(job.args);
+        // free(job->args);
+        // free(job);
     }
     // remove this pthread
 
@@ -51,7 +53,7 @@ void* threadpoll_do_job(void * threadpoll)
 void threadpoll_add_worker(threadpoll_t *tp)
 {
     // LOGD("%s\n", __FUNCTION__);
-    pthread_mutex_lock(&(tp->job_lock));
+    // pthread_mutex_lock(&(tp->job_lock));
 
     pthread_mutex_lock(&(tp->worker_lock));
     // LOGD("worker lock\n");
@@ -88,7 +90,7 @@ void threadpoll_add_worker(threadpoll_t *tp)
     LOGD("woker num %d\n", tp->workersnum);
 
     pthread_mutex_unlock(&(tp->worker_lock));
-    pthread_mutex_unlock(&(tp->job_lock));
+    // pthread_mutex_unlock(&(tp->job_lock));
     // LOGD("worker unlock\n");
 
 }
