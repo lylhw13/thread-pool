@@ -21,8 +21,9 @@ typedef enum {
 } threadpoll_dynamic_t;
 
 typedef enum {
+    no_shutdown = 0,
     shutdown_nowait,    /* immediate shutdown */
-    shutdown,           /* after the current job done */
+    // shutdown_waitcurr,           /* after the current job done */
     shutdown_waitall,       /* after all jobs done */
 } threadpoll_shutdown_t;
 
@@ -34,13 +35,18 @@ typedef struct threadpoll {
     int shutdown;
     int dynamic;
 
-    int workernums;
-    worker_t *worker_head;
+    int workersnum;
+    worker_t *worker;
 
     int jobsnum;
     job_t *job_head;
 
 } threadpoll_t;
+
+typedef enum {
+    threadpoll_invalid = -5,
+    threadpoll_lock_failure,
+} threadpoll_error_t;
 
 
 #define MAX_THREAD_NUM 64
