@@ -43,10 +43,42 @@ void* threadpoll_do_job(void * threadpoll)
             free(job->args);
         free(job);
     }
-    // remove this pthread
-
-    // LOGD("quit job")
     pthread_mutex_unlock(&(tp->job_lock));
+
+    LOGD("before lock worker_lock\n");
+    pthread_mutex_lock(&(tp->worker_lock));
+    LOGD("begin to remove\n");
+    worker_t *curr;
+    for (curr = tp->workerptr; curr != NULL; curr = curr->next) {
+        if (pthread_equal(pthread_self(), curr->thread))
+            break;
+    }
+    // LOGD("get curr ptr\n");
+    /* remove this woker */
+    if (curr) {
+        if (curr == tp->workerptr) {
+            tp->workerptr = curr->next;
+            if (tp->workerptr != NULL)
+                tp->workerptr->prev = NULL;
+        }
+        else {
+            worker_t *prev = curr->prev;
+            worker_t *next = curr->next;
+            if (prev != NULL && next != NULL) {
+                prev->next = next;
+                next->prev = prev;
+            }
+            // else if (prev == NULL) {
+            //     next->prev = NULL;
+            // }
+            else if (next == NULL) {
+                prev->next = NULL;
+            }
+        }
+        free(curr);
+        tp->workersnum--;
+    }
+    pthread_mutex_unlock(&(tp->worker_lock));
     pthread_exit(NULL);
     return NULL;
 }
@@ -54,10 +86,8 @@ void* threadpoll_do_job(void * threadpoll)
 void threadpoll_add_worker(threadpoll_t *tp)
 {
     // LOGD("%s\n", __FUNCTION__);
-    // pthread_mutex_lock(&(tp->job_lock));
 
     pthread_mutex_lock(&(tp->worker_lock));
-    // LOGD("worker lock\n");
 
     worker_t *worker;
     worker = (worker_t *)malloc(sizeof(worker_t));
@@ -91,9 +121,6 @@ void threadpoll_add_worker(threadpoll_t *tp)
     LOGD("woker num %d\n", tp->workersnum);
 
     pthread_mutex_unlock(&(tp->worker_lock));
-    // pthread_mutex_unlock(&(tp->job_lock));
-    // LOGD("worker unlock\n");
-
 }
 
 threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
@@ -175,24 +202,28 @@ void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type)
     }
 
     tp->shutdown = shutdown_type;
+    /* wake up all wokers */
     if (pthread_cond_broadcast(&(tp->notify)) != 0)
         error("broadcast error");
-
     if (pthread_mutex_unlock(&(tp->job_lock)) != 0)
         error("unlcok job_lock");
 
     /* lock woker_lock */
-    if (pthread_mutex_lock(&(tp->worker_lock)) != 0)
-        error("lock worker_lock");
+    // if (pthread_mutex_lock(&(tp->worker_lock)) != 0)
+    //     error("lock worker_lock");
+    // LOGD("lock woker_lock befor join all\n");
 
-    worker_t *worker_p = tp->workerptr;
-    while (worker_p) {
-        if (pthread_join(worker_p->thread, NULL) != 0)
-            error("pthread join error");
-        worker_p = worker_p->next;
+    // worker_t *worker_p = tp->workerptr;
+    // while (worker_p) {
+    //     if (pthread_join(worker_p->thread, NULL) != 0)
+    //         error("pthread join error");
+    //     worker_p = worker_p->next;
+    // }
+
+    // if (pthread_mutex_unlock(&(tp->worker_lock)) != 0)
+    //     error("unlock woker_lock");
+    while (tp->workersnum) {
+        ;
     }
-
-    if (pthread_mutex_unlock(&(tp->worker_lock)) != 0)
-        error("unlock woker_lock");
     return;
 }
