@@ -14,7 +14,8 @@ void* threadpoll_do_job(void * threadpoll)
     // LOGD("%s\n", __FUNCTION__);
 
     threadpoll_t *tp = (threadpoll_t *)threadpoll;
-    job_t job;
+    // job_t **job;
+    // job_t job;
 
     for(;;) {
         // LOGD("for\n");
@@ -30,17 +31,15 @@ void* threadpoll_do_job(void * threadpoll)
                 LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
         }
-        job.jobfun = tp->job_head->jobfun;
-        job.args = tp->job_head->args;
+        job_t *job;
+        job = tp->job_head;
         tp->job_head = tp->job_head->next;
         tp->jobsnum --;
 
         pthread_mutex_unlock(&(tp->job_lock));
 
-
-        (*(job.jobfun))(job.args);
-        // free(job->args);
-        // free(job);
+        (*((*job).jobfun))((*job).args);
+        free(job);
     }
     // remove this pthread
 
@@ -67,21 +66,21 @@ void threadpoll_add_worker(threadpoll_t *tp)
         error("pthread create\n");
     
 
-    if (tp->worker == NULL) {
-        tp->worker = worker;
+    if (tp->workerptr == NULL) {
+        tp->workerptr = worker;
     }
     else {
-        worker_t *tmp = tp->worker->next;
+        worker_t *tmp = tp->workerptr->next;
 
         if (tmp == NULL) {
-            tp->worker->next = worker;
-            worker->prev = tp->worker;
+            tp->workerptr->next = worker;
+            worker->prev = tp->workerptr;
         }
         else {
-            tp->worker->next = worker;
+            tp->workerptr->next = worker;
             worker->next = tmp;
             tmp->prev = worker;
-            worker->prev = tp->worker;
+            worker->prev = tp->workerptr;
         }
 
     }
@@ -105,7 +104,7 @@ threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
     if (!tp)
         error("malloc threadpool");
 
-    tp->worker = NULL;
+    tp->workerptr = NULL;
     tp->jobsnum = 0;
     tp->workersnum = 0;
     tp->shutdown = no_shutdown;
@@ -118,7 +117,6 @@ threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
     if (dynamic == fix_num) {
         for (i = 0; i < DEFAULT_THREAD_NUM; ++ i) {
             threadpoll_add_worker(tp);
-            // sleep(1);
         }
         return tp;
     }
@@ -172,7 +170,7 @@ void threadpool_destory(threadpoll_t *tp)
         error("broadcast error");
     pthread_mutex_unlock(&(tp->worker_lock));
 
-    worker_t *worker_p = tp->worker;
+    worker_t *worker_p = tp->workerptr;
     while (worker_p) {
         pthread_join(worker_p->thread, NULL);
         worker_p = worker_p->next;

@@ -36,7 +36,7 @@ typedef struct threadpoll {
     int dynamic;
 
     int workersnum;
-    worker_t *worker;
+    worker_t *workerptr;
 
     int jobsnum;
     job_t *job_head;
