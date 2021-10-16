@@ -46,7 +46,7 @@ begin:
                 }
             }
         }
-        LOGD("jobnum is %d, thread_num is %d\n",tp->jobsnum, tp->workersnum);
+        printf("jobnum is %d, thread_num is %d\n",tp->jobsnum, tp->workersnum);
         pthread_mutex_unlock(&(tp->worker_lock));
         if (tp->jobsnum == 0)
             continue;
@@ -140,6 +140,8 @@ threadpool_t *threadpool_init (int workernum, threadpool_dynamic_t dynamic)
         error("malloc threadpool");
 
     tp->worker_head = NULL;
+    tp->job_head = NULL;
+    tp->job_tail = NULL;
     tp->jobsnum = 0;
     tp->workersnum = 0;
     tp->target_workernum = workernum;
@@ -177,11 +179,21 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
         return threadpool_lock_failure;
     }
 
-    if (tp->job_head == NULL)
+    // if (tp->job_head == NULL)
+    //     tp->job_head = job;
+    // else {
+    //     job->next = tp->job_head->next;
+    //     tp->job_head->next = job;
+    // }
+    if (tp->job_head == NULL) {
+        // if (tp->job_tail != NULL)
+        //     error("job_tail not NULL");
         tp->job_head = job;
+        tp->job_tail = job;
+    }
     else {
-        job->next = tp->job_head->next;
-        tp->job_head->next = job;
+        tp->job_tail->next = job;
+        tp->job_tail = job;
     }
 
     tp->jobsnum++;
@@ -190,8 +202,11 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
     if (tp->dynamic && tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
         pthread_mutex_lock(&(tp->worker_lock));
         int best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
+        if (best_workernum >= MAX_THREAD_NUM)
+            best_workernum = MAX_THREAD_NUM;
+
         LOGD("best worker num is %d\n", best_workernum);
-        for (i = tp->workersnum; i <= best_workernum; ++i) {
+        for (i = tp->workersnum; i < best_workernum; ++i) {
             threadpool_add_worker_withoutlock(tp);
         }
         pthread_mutex_unlock(&(tp->worker_lock));

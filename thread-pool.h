@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define MAX_THREAD_NUM 8
+#define MAX_THREAD_NUM 16
 #define DEFAULT_THREAD_NUM 4
 #define MIN_THREAD_NUM 2
 
@@ -52,6 +52,7 @@ typedef struct threadpool {
 
     int jobsnum;
     job_t *job_head;
+    job_t *job_tail;
 
 } threadpool_t;
 
