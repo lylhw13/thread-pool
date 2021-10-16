@@ -117,6 +117,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.plot(t, jobnum, label="job num")
     ax.plot(t, threadnum, label="thread num")
+    ax.set(title = "dynamic thread num")
     ax.legend()
     ax.grid()
     fig.savefig("dynamic.png")
