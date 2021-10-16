@@ -17,6 +17,7 @@ void* threadpool_do_job(void * threadpool)
 
     threadpool_t *tp = (threadpool_t *)threadpool;
 
+begin:
     for(;;) {
         job_t *job;
         // LOGD("for\n");
@@ -27,11 +28,21 @@ void* threadpool_do_job(void * threadpool)
         while ((tp->jobsnum == 0) && (!tp->shutdown))
             pthread_cond_wait(&(tp->notify), &(tp->job_lock));
 
+        /* shutdown */
         if (tp->shutdown == shutdown_immediate || 
             (tp->shutdown == shutdown_waitall && tp->jobsnum == 0)) {
                 LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
         }
+
+        if (tp->target_workernum < tp->workersnum) {
+            break;
+        }
+
+        if (tp->jobsnum == 0)
+            continue;
+
+
         job = tp->job_head;
         tp->job_head = tp->job_head->next;
         tp->jobsnum --;
@@ -49,7 +60,11 @@ void* threadpool_do_job(void * threadpool)
 
     // LOGD("before lock worker_lock\n");
     pthread_mutex_lock(&(tp->worker_lock));
-    // LOGD("begin to remove\n");
+
+    if (tp->shutdown == no_shutdown && tp->target_workernum >= tp->workersnum) {
+        pthread_mutex_unlock(&(tp->worker_lock));
+        goto begin;
+    }
 
     if (pthread_equal(thr, tp->worker_head->thread) != 0) {
         curr = tp->worker_head;
@@ -63,20 +78,20 @@ void* threadpool_do_job(void * threadpool)
         }
 
         if (curr == NULL)
-            goto out;
+            error("can't locat current thread in the worker list");
         prev->next = curr->next;
     }
 
     free(curr);
     tp->workersnum--;
-    // LOGD("get curr ptr\n");
-out:
+    tp->last_workerchange = time(NULL);
+
     pthread_mutex_unlock(&(tp->worker_lock));
     pthread_exit(NULL);
     return NULL;
 }
 
-void threadpool_add_worker(threadpool_t *tp)
+static void threadpool_add_worker(threadpool_t *tp)
 {
     // LOGD("%s\n", __FUNCTION__);
 
@@ -95,24 +110,13 @@ void threadpool_add_worker(threadpool_t *tp)
         tp->worker_head = worker;
     }
     else {
-        // worker_t *tmp = tp->worker_head->next;
-
-        // if (tmp == NULL) {
-        //     tp->worker_head->next = worker;
-        //     worker->prev = tp->worker_head;
-        // }
-        // else {
-        //     tp->worker_head->next = worker;
-        //     worker->next = tmp;
-        //     tmp->prev = worker;
-        //     worker->prev = tp->worker_head;
-        // }
         worker->next = tp->worker_head->next;
         tp->worker_head->next = worker;
     }
 
     tp->workersnum++;
-    LOGD("woker num %d\n", tp->workersnum);
+    tp->last_workerchange = time(NULL);
+    LOGD("woker num %d, time at %ld\n", tp->workersnum, (long)tp->last_workerchange);
 
     pthread_mutex_unlock(&(tp->worker_lock));
 }
@@ -203,27 +207,38 @@ void threadpool_destory(threadpool_t *tp, threadpool_shutdown_t shutdown_type)
     if (pthread_mutex_unlock(&(tp->job_lock)) != 0)
         error("unlcok job_lock");
 
-    /* lock woker_lock */
-    // if (pthread_mutex_lock(&(tp->worker_lock)) != 0)
-    //     error("lock worker_lock");
-    // LOGD("lock woker_lock befor join all\n");
-
-    // worker_t *worker_p = tp->workerptr;
-    // while (worker_p) {
-    //     if (pthread_join(worker_p->thread, NULL) != 0)
-    //         error("pthread join error");
-    //     worker_p = worker_p->next;
-    // }
-
-    // if (pthread_mutex_unlock(&(tp->worker_lock)) != 0)
-    //     error("unlock woker_lock");
     while (tp->workersnum) {
         ;
     }
     return;
 }
 
-int threadpool_change_target_workernum(int target)
+int threadpool_change_target_workernum(threadpool_t *tp, int target)
 {
+    int i;
+
+    if (tp == NULL || tp->shutdown || tp->dynamic)
+        return;
+
+    if (target >= tp->target_workernum) {
+        tp->target_workernum = target;
+        while (tp->workersnum < tp->target_workernum)
+            threadpool_add_worker(tp); 
+    }
+    else {
+        tp->target_workernum = target;  /* this line don't have competer */
+
+        /* lock job_lock */
+        if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
+            LOGD("thread %ld function %s error %s\n", (long)pthread_self() ,__FUNCTION__, "lock job_lock" );
+            error("lock job_lock");
+        }
+        /* wake up all wokers */
+        if (pthread_cond_broadcast(&(tp->notify)) != 0)
+            error("broadcast error");
+        if (pthread_mutex_unlock(&(tp->job_lock)) != 0)
+            error("unlcok job_lock");
+    }
+
     return 0;
 }

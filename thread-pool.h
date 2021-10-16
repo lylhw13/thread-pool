@@ -2,6 +2,13 @@
 #define THREAD_POOL_H
 
 #include <pthread.h>
+#include <sys/time.h>
+
+#define MAX_THREAD_NUM 64
+#define DEFAULT_THREAD_NUM 4
+#define MIN_THREAD_NUM 4
+
+#define TIME_INTERVAL 30
 
 typedef struct job {
     void (*jobfun)(void *);
@@ -37,6 +44,7 @@ typedef struct threadpool {
 
     int workersnum;
     int target_workernum;
+    time_t last_workerchange;
     worker_t *worker_head;
 
     int jobsnum;
@@ -50,18 +58,21 @@ typedef enum {
 } threadpool_error_t;
 
 
-#define MAX_THREAD_NUM 64
-#define DEFAULT_THREAD_NUM 4
-#define MIN_THREAD_NUM 4
+
 
 threadpool_t *threadpool_init (int workernum, threadpool_dynamic_t dynamic);
-// threadpool_t *threadpool_init(threadpool_dynamic_t dyanmic);
 int threadpool_add_job(threadpool_t *tp, job_t *job);
 void threadpool_destory(threadpool_t *tp, threadpool_shutdown_t shutdown_type);
 
 #define LOGD(...) fprintf(stderr, __VA_ARGS__)
 
 #endif
+
+// if dynamic worker, don't allow user to set target_worker
+
+// doudong wen
+
+// every a time to change workernum
 
 
 
