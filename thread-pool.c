@@ -41,7 +41,7 @@ begin:
         else {
             if (tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
                 best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
-                if (best_workernum < tp->workersnum) {
+                if (best_workernum < tp->workersnum && MIN_THREAD_NUM < tp->workersnum) {
                     break;
                 }
             }
@@ -85,7 +85,7 @@ begin:
     free(curr);
     tp->workersnum--;
     tp->last_workerchange = time(NULL);
-
+    LOGD("remove a worker, leave %d\n", tp->workersnum),
     pthread_mutex_unlock(&(tp->worker_lock));
     pthread_mutex_unlock(&(tp->job_lock));
 
@@ -95,7 +95,7 @@ begin:
 
 static void threadpool_add_worker_withoutlock(threadpool_t *tp)
 {
-    // LOGD("%s\n", __FUNCTION__);
+    LOGD("%s\n", __FUNCTION__);
     worker_t *worker;
     worker = (worker_t *)malloc(sizeof(worker_t));
     if (!worker)
@@ -191,6 +191,7 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
     if (tp->dynamic && tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
         pthread_mutex_lock(&(tp->worker_lock));
         int best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
+        LOGD("best worker num is %d\n", best_workernum);
         for (i = tp->workersnum; i <= best_workernum; ++i) {
             threadpool_add_worker_withoutlock(tp);
         }

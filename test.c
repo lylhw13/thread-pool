@@ -11,40 +11,63 @@ void function(void *i)
     pthread_t thr;
     thr = pthread_self();
     printf("id %ld print %d\n", (long)thr, *(int*)i);
-    sleep(1);
+    sleep(2);
+}
+
+void test_dynamic()
+{
+    int i;
+    threadpool_t *tp;
+    tp = threadpool_init(0, dynamic_num);
+    for (i = 0; i< 20; ++i) {
+        int* j = malloc(sizeof(int));
+        job_t *job = (job_t *)malloc(sizeof(job_t));
+        job->jobfun = function;
+        *j = i;
+        job->args = j;
+        threadpool_add_job(tp, job);
+        sleep(0.3);
+    }
+
+    sleep(20);
+    threadpool_destory(tp, shutdown_waitall);
+    return;
 }
 
 int main()
 {
-    int i;
-    threadpool_t *tp;
-    int workernum = 2;
+    // int i;
+    // threadpool_t *tp;
+    // int workernum = 2;
 
-    tp = threadpool_init(workernum, fix_num);
+    // tp = threadpool_init(workernum, fix_num);
 
-    for (i = 0; i< 10; ++i) {
-        int* j = malloc(sizeof(int));
-        job_t *job = (job_t *)malloc(sizeof(job_t));
-        job->jobfun = function;
-        *j = i;
-        job->args = j;
-        threadpool_add_job(tp, job);
-        // sleep(1);
-    }
-    sleep(2);
-    workernum = 4;
-    threadpool_change_target_workernum(tp, workernum);
-    for (; i< 20; ++i) {
-        int* j = malloc(sizeof(int));
-        job_t *job = (job_t *)malloc(sizeof(job_t));
-        job->jobfun = function;
-        *j = i;
-        job->args = j;
-        threadpool_add_job(tp, job);
-        // sleep(1);
-    }
+    // for (i = 0; i< 10; ++i) {
+    //     int* j = malloc(sizeof(int));
+    //     job_t *job = (job_t *)malloc(sizeof(job_t));
+    //     job->jobfun = function;
+    //     *j = i;
+    //     job->args = j;
+    //     threadpool_add_job(tp, job);
+    //     // sleep(1);
+    // }
+    // sleep(2);
+    // workernum = 4;
+    // threadpool_change_target_workernum(tp, workernum);
+    // for (; i< 20; ++i) {
+    //     int* j = malloc(sizeof(int));
+    //     job_t *job = (job_t *)malloc(sizeof(job_t));
+    //     job->jobfun = function;
+    //     *j = i;
+    //     job->args = j;
+    //     threadpool_add_job(tp, job);
+    //     // sleep(1);
+    // }
+
     // tp->shutdown = shutdown_waitall;
-    sleep(3);
-    threadpool_destory(tp, shutdown_waitall);
+    // sleep(3);
+    // threadpool_destory(tp, shutdown_waitall);
+
+    test_dynamic();
     return 0;
 }

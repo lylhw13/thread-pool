@@ -4,11 +4,11 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define MAX_THREAD_NUM 64
+#define MAX_THREAD_NUM 8
 #define DEFAULT_THREAD_NUM 4
-#define MIN_THREAD_NUM 4
+#define MIN_THREAD_NUM 2
 
-#define TIME_INTERVAL 30
+#define TIME_INTERVAL 1
 
 /* ratio should >= 1.0 */
 #define JOB_WORKER_RATIO 1.0
