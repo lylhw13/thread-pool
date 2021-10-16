@@ -28,7 +28,7 @@ typedef enum {
 
 
 typedef struct threadpoll {
-    pthread_mutex_t worker_lock;
+    pthread_mutex_t worker_lock;    /* only used in add and remove worker */
     pthread_mutex_t job_lock;
     pthread_cond_t notify;
 
@@ -56,7 +56,8 @@ typedef enum {
 threadpoll_t *threadpoll_init(threadpoll_dynamic_t dyanmic);
 
 int threadpoll_add_job(threadpoll_t *tp, job_t *job);
-void threadpool_destory(threadpoll_t *tp);
+// void threadpool_destory(threadpoll_t *tp);
+void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type);
 
 #define LOGD(...) fprintf(stderr, __VA_ARGS__)
 

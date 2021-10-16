@@ -14,8 +14,6 @@ void* threadpoll_do_job(void * threadpoll)
     // LOGD("%s\n", __FUNCTION__);
 
     threadpoll_t *tp = (threadpoll_t *)threadpoll;
-    // job_t **job;
-    // job_t job;
 
     for(;;) {
         // LOGD("for\n");
@@ -39,6 +37,10 @@ void* threadpoll_do_job(void * threadpoll)
         pthread_mutex_unlock(&(tp->job_lock));
 
         (*((*job).jobfun))((*job).args);
+
+        /* free memory */
+        if (job->args)  /* this is shoud be malloc variable */
+            free(job->args);
         free(job);
     }
     // remove this pthread
@@ -128,7 +130,6 @@ err:
 }
 
 
-
 int threadpoll_add_job(threadpoll_t *tp, job_t *job)
 {
     LOGD("%s\n", __FUNCTION__);
@@ -162,18 +163,36 @@ int threadpoll_add_job(threadpoll_t *tp, job_t *job)
     return err;
 }
 
-void threadpool_destory(threadpoll_t *tp)
+void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type)
 {
-    pthread_mutex_lock(&(tp->worker_lock));
-    tp->shutdown = shutdown_waitall;
+    if (tp == NULL || tp->shutdown)
+        return;
+
+    /* lock job_lock */
+    if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
+        LOGD("thread %ld function %s error %s\n", (long)pthread_self() ,__FUNCTION__, "lock job_lock" );
+        error("lock job_lock");
+    }
+
+    tp->shutdown = shutdown_type;
     if (pthread_cond_broadcast(&(tp->notify)) != 0)
         error("broadcast error");
-    pthread_mutex_unlock(&(tp->worker_lock));
+
+    if (pthread_mutex_unlock(&(tp->job_lock)) != 0)
+        error("unlcok job_lock");
+
+    /* lock woker_lock */
+    if (pthread_mutex_lock(&(tp->worker_lock)) != 0)
+        error("lock worker_lock");
 
     worker_t *worker_p = tp->workerptr;
     while (worker_p) {
-        pthread_join(worker_p->thread, NULL);
+        if (pthread_join(worker_p->thread, NULL) != 0)
+            error("pthread join error");
         worker_p = worker_p->next;
     }
+
+    if (pthread_mutex_unlock(&(tp->worker_lock)) != 0)
+        error("unlock woker_lock");
     return;
 }

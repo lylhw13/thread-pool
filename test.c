@@ -32,6 +32,6 @@ int main()
     }
     // tp->shutdown = shutdown_waitall;
     sleep(3);
-    threadpool_destory(tp);
+    threadpool_destory(tp, shutdown_waitall);
     return 0;
 }
