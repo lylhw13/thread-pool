@@ -12,10 +12,13 @@ void error(const char *str)
 void* threadpoll_do_job(void * threadpoll)
 {
     // LOGD("%s\n", __FUNCTION__);
+    worker_t *curr, *prev;
+    pthread_t thr = pthread_self();
 
     threadpoll_t *tp = (threadpoll_t *)threadpoll;
 
     for(;;) {
+        job_t *job;
         // LOGD("for\n");
 
         if (pthread_mutex_lock(&(tp->job_lock)))
@@ -29,7 +32,6 @@ void* threadpoll_do_job(void * threadpoll)
                 LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
         }
-        job_t *job;
         job = tp->job_head;
         tp->job_head = tp->job_head->next;
         tp->jobsnum --;
@@ -45,39 +47,30 @@ void* threadpoll_do_job(void * threadpoll)
     }
     pthread_mutex_unlock(&(tp->job_lock));
 
-    LOGD("before lock worker_lock\n");
+    // LOGD("before lock worker_lock\n");
     pthread_mutex_lock(&(tp->worker_lock));
-    LOGD("begin to remove\n");
-    worker_t *curr;
-    for (curr = tp->workerptr; curr != NULL; curr = curr->next) {
-        if (pthread_equal(pthread_self(), curr->thread))
-            break;
+    // LOGD("begin to remove\n");
+
+    if (pthread_equal(thr, tp->worker_head->thread) != 0) {
+        curr = tp->worker_head;
+        tp->worker_head = curr->next;
     }
+    else {
+        for (prev = tp->worker_head; prev->next != NULL; prev = prev->next) {
+            curr = prev->next;
+            if (pthread_equal(thr, curr->thread) != 0)
+                break;
+        }
+
+        if (curr == NULL)
+            goto out;
+        prev->next = curr->next;
+    }
+
+    free(curr);
+    tp->workersnum--;
     // LOGD("get curr ptr\n");
-    /* remove this woker */
-    if (curr) {
-        if (curr == tp->workerptr) {
-            tp->workerptr = curr->next;
-            if (tp->workerptr != NULL)
-                tp->workerptr->prev = NULL;
-        }
-        else {
-            worker_t *prev = curr->prev;
-            worker_t *next = curr->next;
-            if (prev != NULL && next != NULL) {
-                prev->next = next;
-                next->prev = prev;
-            }
-            // else if (prev == NULL) {
-            //     next->prev = NULL;
-            // }
-            else if (next == NULL) {
-                prev->next = NULL;
-            }
-        }
-        free(curr);
-        tp->workersnum--;
-    }
+out:
     pthread_mutex_unlock(&(tp->worker_lock));
     pthread_exit(NULL);
     return NULL;
@@ -98,23 +91,24 @@ void threadpoll_add_worker(threadpoll_t *tp)
         error("pthread create\n");
     
 
-    if (tp->workerptr == NULL) {
-        tp->workerptr = worker;
+    if (tp->worker_head == NULL) {
+        tp->worker_head = worker;
     }
     else {
-        worker_t *tmp = tp->workerptr->next;
+        // worker_t *tmp = tp->worker_head->next;
 
-        if (tmp == NULL) {
-            tp->workerptr->next = worker;
-            worker->prev = tp->workerptr;
-        }
-        else {
-            tp->workerptr->next = worker;
-            worker->next = tmp;
-            tmp->prev = worker;
-            worker->prev = tp->workerptr;
-        }
-
+        // if (tmp == NULL) {
+        //     tp->worker_head->next = worker;
+        //     worker->prev = tp->worker_head;
+        // }
+        // else {
+        //     tp->worker_head->next = worker;
+        //     worker->next = tmp;
+        //     tmp->prev = worker;
+        //     worker->prev = tp->worker_head;
+        // }
+        worker->next = tp->worker_head->next;
+        tp->worker_head->next = worker;
     }
 
     tp->workersnum++;
@@ -133,7 +127,7 @@ threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
     if (!tp)
         error("malloc threadpool");
 
-    tp->workerptr = NULL;
+    tp->worker_head = NULL;
     tp->jobsnum = 0;
     tp->workersnum = 0;
     tp->shutdown = no_shutdown;

@@ -12,7 +12,7 @@ typedef struct job {
 typedef struct worker {
     pthread_t thread;
     struct worker *next;
-    struct worker *prev;
+    // struct worker *prev;
 } worker_t;
 
 typedef enum {
@@ -36,7 +36,7 @@ typedef struct threadpoll {
     int dynamic;
 
     int workersnum;
-    worker_t *workerptr;
+    worker_t *worker_head;
 
     int jobsnum;
     job_t *job_head;
@@ -54,9 +54,7 @@ typedef enum {
 #define MIN_THREAD_NUM 4
 
 threadpoll_t *threadpoll_init(threadpoll_dynamic_t dyanmic);
-
 int threadpoll_add_job(threadpoll_t *tp, job_t *job);
-// void threadpool_destory(threadpoll_t *tp);
 void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type);
 
 #define LOGD(...) fprintf(stderr, __VA_ARGS__)
