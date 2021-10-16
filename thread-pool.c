@@ -20,7 +20,6 @@ void* threadpool_do_job(void * threadpool)
 begin:
     for(;;) {
         job_t *job;
-        // LOGD("for\n");
 
         if (pthread_mutex_lock(&(tp->job_lock)))
             error("lock\n");
@@ -35,9 +34,14 @@ begin:
             break;
         }
 
+        /* this state we will exit this thread */
         if (tp->target_workernum < tp->workersnum) {
             break;
         }
+
+        // /* check whether we need to change worker num */
+        // if (time(NULL) > TIME_INTERVAL + tp->last_workerchange)
+        //     break;
 
         if (tp->jobsnum == 0)
             continue;
@@ -58,9 +62,11 @@ begin:
     }
     pthread_mutex_unlock(&(tp->job_lock));
 
-    // LOGD("before lock worker_lock\n");
+
+    /* remove this thread */
     pthread_mutex_lock(&(tp->worker_lock));
 
+    /* check again */
     if (tp->shutdown == no_shutdown && tp->target_workernum >= tp->workersnum) {
         pthread_mutex_unlock(&(tp->worker_lock));
         goto begin;
@@ -87,6 +93,7 @@ begin:
     tp->last_workerchange = time(NULL);
 
     pthread_mutex_unlock(&(tp->worker_lock));
+
     pthread_exit(NULL);
     return NULL;
 }
@@ -177,6 +184,17 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
 
     tp->jobsnum++;
 
+    /* whether need to add worker */
+    if (tp->dynamic && tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
+        // pthread_mutex_lock(&(tp->worker_lock));
+        int best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
+        if (best_workernum > tp->workersnum) {
+            // add worker
+            threadpool_change_target_workernum(tp, best_workernum); /* no need to atmic */
+        }
+        // pthread_mutex_unlock(&(tp->worker_lock));
+    }
+
     printf("jobsnum %d\n", tp->jobsnum);
 
     if (pthread_cond_signal(&(tp->notify)) != 0) {
@@ -217,7 +235,7 @@ int threadpool_change_target_workernum(threadpool_t *tp, int target)
 {
     int i;
 
-    if (tp == NULL || tp->shutdown || tp->dynamic)
+    if (tp == NULL || tp->shutdown)
         return;
 
     if (target >= tp->target_workernum) {

@@ -10,6 +10,9 @@
 
 #define TIME_INTERVAL 30
 
+/* ratio should >= 1.0 */
+#define JOB_WORKER_RATIO 1.0
+
 typedef struct job {
     void (*jobfun)(void *);
     void * args;
