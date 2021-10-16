@@ -46,7 +46,7 @@ begin:
                 }
             }
         }
-        LOGD("thread num is %d\n", tp->workersnum);
+        LOGD("jobnum is %d, thread_num is %d\n",tp->jobsnum, tp->workersnum);
         pthread_mutex_unlock(&(tp->worker_lock));
         if (tp->jobsnum == 0)
             continue;
@@ -85,7 +85,7 @@ begin:
     free(curr);
     tp->workersnum--;
     tp->last_workerchange = time(NULL);
-    LOGD("remove a worker, leave %d\n", tp->workersnum),
+    // LOGD("remove a worker, leave %d\n", tp->workersnum),
     pthread_mutex_unlock(&(tp->worker_lock));
     pthread_mutex_unlock(&(tp->job_lock));
 
@@ -95,7 +95,7 @@ begin:
 
 static void threadpool_add_worker_withoutlock(threadpool_t *tp)
 {
-    LOGD("%s\n", __FUNCTION__);
+    // LOGD("%s\n", __FUNCTION__);
     worker_t *worker;
     worker = (worker_t *)malloc(sizeof(worker_t));
     if (!worker)
@@ -116,7 +116,6 @@ static void threadpool_add_worker_withoutlock(threadpool_t *tp)
     tp->workersnum++;
     tp->last_workerchange = time(NULL);
     LOGD("woker num %d, time at %ld\n", tp->workersnum, (long)tp->last_workerchange);
-
 }
 
 
@@ -167,7 +166,7 @@ err:
 
 int threadpool_add_job(threadpool_t *tp, job_t *job)
 {
-    LOGD("%s\n", __FUNCTION__);
+    // LOGD("%s\n", __FUNCTION__);
     int i;
     int err = 0;
     if (tp == NULL || job->jobfun == NULL)
@@ -199,7 +198,7 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
     }
 
 
-    printf("jobsnum %d\n", tp->jobsnum);
+    // printf("jobsnum %d\n", tp->jobsnum);
 
     if (pthread_cond_signal(&(tp->notify)) != 0) {
         err = threadpool_lock_failure;

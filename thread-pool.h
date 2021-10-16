@@ -8,7 +8,7 @@
 #define DEFAULT_THREAD_NUM 4
 #define MIN_THREAD_NUM 2
 
-#define TIME_INTERVAL 1
+#define TIME_INTERVAL 0.5
 
 /* ratio should >= 1.0 */
 #define JOB_WORKER_RATIO 1.0

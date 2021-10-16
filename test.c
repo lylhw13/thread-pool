@@ -11,7 +11,7 @@ void function(void *i)
     pthread_t thr;
     thr = pthread_self();
     printf("id %ld print %d\n", (long)thr, *(int*)i);
-    sleep(2);
+    sleep(random() % 50);
 }
 
 void test_dynamic()
@@ -26,9 +26,10 @@ void test_dynamic()
         *j = i;
         job->args = j;
         threadpool_add_job(tp, job);
-        sleep(0.3);
+        sleep(random() % 5);
     }
 
+    printf("sleep\n");
     sleep(20);
     threadpool_destory(tp, shutdown_waitall);
     return;
