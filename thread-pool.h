@@ -66,6 +66,7 @@ typedef enum {
 threadpool_t *threadpool_init (int workernum, threadpool_dynamic_t dynamic);
 int threadpool_add_job(threadpool_t *tp, job_t *job);
 void threadpool_destory(threadpool_t *tp, threadpool_shutdown_t shutdown_type);
+void threadpool_change_target_workernum(threadpool_t *tp, int target);
 
 #define LOGD(...) fprintf(stderr, __VA_ARGS__)
 

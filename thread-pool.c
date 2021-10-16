@@ -13,8 +13,8 @@ void* threadpool_do_job(void * threadpool)
 {
     // LOGD("%s\n", __FUNCTION__);
     worker_t *curr, *prev;
+    int best_workernum;
     pthread_t thr = pthread_self();
-
     threadpool_t *tp = (threadpool_t *)threadpool;
 
 begin:
@@ -27,22 +27,27 @@ begin:
         while ((tp->jobsnum == 0) && (!tp->shutdown))
             pthread_cond_wait(&(tp->notify), &(tp->job_lock));
 
-        /* shutdown */
+        pthread_mutex_lock(&(tp->worker_lock));
         if (tp->shutdown == shutdown_immediate || 
             (tp->shutdown == shutdown_waitall && tp->jobsnum == 0)) {
-                LOGD("break jobsnum %d\n", tp->jobsnum);
+            LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
         }
-
-        /* this state we will exit this thread */
-        if (tp->target_workernum < tp->workersnum) {
-            break;
+        if (tp->dynamic == fix_num) {
+            if (tp->target_workernum < tp->workersnum) {
+                break;
+            }
         }
-
-        // /* check whether we need to change worker num */
-        // if (time(NULL) > TIME_INTERVAL + tp->last_workerchange)
-        //     break;
-
+        else {
+            if (tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
+                best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
+                if (best_workernum < tp->workersnum) {
+                    break;
+                }
+            }
+        }
+        LOGD("thread num is %d\n", tp->workersnum);
+        pthread_mutex_unlock(&(tp->worker_lock));
         if (tp->jobsnum == 0)
             continue;
 
@@ -59,17 +64,6 @@ begin:
         if (job->args)  /* this is shoud be malloc variable */
             free(job->args);
         free(job);
-    }
-    pthread_mutex_unlock(&(tp->job_lock));
-
-
-    /* remove this thread */
-    pthread_mutex_lock(&(tp->worker_lock));
-
-    /* check again */
-    if (tp->shutdown == no_shutdown && tp->target_workernum >= tp->workersnum) {
-        pthread_mutex_unlock(&(tp->worker_lock));
-        goto begin;
     }
 
     if (pthread_equal(thr, tp->worker_head->thread) != 0) {
@@ -93,17 +87,15 @@ begin:
     tp->last_workerchange = time(NULL);
 
     pthread_mutex_unlock(&(tp->worker_lock));
+    pthread_mutex_unlock(&(tp->job_lock));
 
     pthread_exit(NULL);
     return NULL;
 }
 
-static void threadpool_add_worker(threadpool_t *tp)
+static void threadpool_add_worker_withoutlock(threadpool_t *tp)
 {
     // LOGD("%s\n", __FUNCTION__);
-
-    pthread_mutex_lock(&(tp->worker_lock));
-
     worker_t *worker;
     worker = (worker_t *)malloc(sizeof(worker_t));
     if (!worker)
@@ -125,8 +117,18 @@ static void threadpool_add_worker(threadpool_t *tp)
     tp->last_workerchange = time(NULL);
     LOGD("woker num %d, time at %ld\n", tp->workersnum, (long)tp->last_workerchange);
 
+}
+
+
+static void threadpool_add_worker(threadpool_t *tp)
+{
+    // LOGD("%s\n", __FUNCTION__);
+
+    pthread_mutex_lock(&(tp->worker_lock));
+    threadpool_add_worker_withoutlock(tp);
     pthread_mutex_unlock(&(tp->worker_lock));
 }
+
 
 threadpool_t *threadpool_init (int workernum, threadpool_dynamic_t dynamic)
 {
@@ -166,6 +168,7 @@ err:
 int threadpool_add_job(threadpool_t *tp, job_t *job)
 {
     LOGD("%s\n", __FUNCTION__);
+    int i;
     int err = 0;
     if (tp == NULL || job->jobfun == NULL)
         return threadpool_invalid;
@@ -186,14 +189,14 @@ int threadpool_add_job(threadpool_t *tp, job_t *job)
 
     /* whether need to add worker */
     if (tp->dynamic && tp->last_workerchange + TIME_INTERVAL < time(NULL)) {
-        // pthread_mutex_lock(&(tp->worker_lock));
+        pthread_mutex_lock(&(tp->worker_lock));
         int best_workernum = (int)(tp->jobsnum / JOB_WORKER_RATIO);
-        if (best_workernum > tp->workersnum) {
-            // add worker
-            threadpool_change_target_workernum(tp, best_workernum); /* no need to atmic */
+        for (i = tp->workersnum; i <= best_workernum; ++i) {
+            threadpool_add_worker_withoutlock(tp);
         }
-        // pthread_mutex_unlock(&(tp->worker_lock));
+        pthread_mutex_unlock(&(tp->worker_lock));
     }
+
 
     printf("jobsnum %d\n", tp->jobsnum);
 
@@ -231,32 +234,33 @@ void threadpool_destory(threadpool_t *tp, threadpool_shutdown_t shutdown_type)
     return;
 }
 
-int threadpool_change_target_workernum(threadpool_t *tp, int target)
+void threadpool_change_target_workernum(threadpool_t *tp, int target)
 {
     int i;
-
     if (tp == NULL || tp->shutdown)
         return;
-
-    if (target >= tp->target_workernum) {
-        tp->target_workernum = target;
-        while (tp->workersnum < tp->target_workernum)
-            threadpool_add_worker(tp); 
+    if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
+        LOGD("thread %ld function %s error %s\n", (long)pthread_self() ,__FUNCTION__, "lock job_lock" );
+        error("lock job_lock");
+    }
+    if (pthread_mutex_lock(&(tp->worker_lock)) != 0) {
+        pthread_mutex_unlock(&(tp->job_lock));
+        return;
+    }
+    tp->target_workernum = target;
+    if (tp->target_workernum >= tp->workersnum) {
+        while (tp->target_workernum > tp->workersnum ) {
+            threadpool_add_worker_withoutlock(tp);
+        }
     }
     else {
-        tp->target_workernum = target;  /* this line don't have competer */
-
-        /* lock job_lock */
-        if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
-            LOGD("thread %ld function %s error %s\n", (long)pthread_self() ,__FUNCTION__, "lock job_lock" );
-            error("lock job_lock");
-        }
-        /* wake up all wokers */
+        /* wakeup */
         if (pthread_cond_broadcast(&(tp->notify)) != 0)
             error("broadcast error");
-        if (pthread_mutex_unlock(&(tp->job_lock)) != 0)
-            error("unlcok job_lock");
     }
 
-    return 0;
+    pthread_mutex_unlock(&(tp->worker_lock));
+    pthread_mutex_unlock(&(tp->job_lock));
+
+    return ;
 }
