@@ -9,13 +9,13 @@ void error(const char *str)
     exit(EXIT_FAILURE);
 }
 
-void* threadpoll_do_job(void * threadpoll)
+void* threadpool_do_job(void * threadpool)
 {
     // LOGD("%s\n", __FUNCTION__);
     worker_t *curr, *prev;
     pthread_t thr = pthread_self();
 
-    threadpoll_t *tp = (threadpoll_t *)threadpoll;
+    threadpool_t *tp = (threadpool_t *)threadpool;
 
     for(;;) {
         job_t *job;
@@ -76,7 +76,7 @@ out:
     return NULL;
 }
 
-void threadpoll_add_worker(threadpoll_t *tp)
+void threadpool_add_worker(threadpool_t *tp)
 {
     // LOGD("%s\n", __FUNCTION__);
 
@@ -87,7 +87,7 @@ void threadpoll_add_worker(threadpoll_t *tp)
     if (!worker)
         error("create worker\n");
 
-    if (pthread_create(&(worker->thread), NULL, &threadpoll_do_job, (void *)tp) != 0)
+    if (pthread_create(&(worker->thread), NULL, &threadpool_do_job, (void *)tp) != 0)
         error("pthread create\n");
     
 
@@ -117,13 +117,13 @@ void threadpoll_add_worker(threadpoll_t *tp)
     pthread_mutex_unlock(&(tp->worker_lock));
 }
 
-threadpoll_t *threadpool_init (int workernum, threadpoll_dynamic_t dynamic)
+threadpool_t *threadpool_init (int workernum, threadpool_dynamic_t dynamic)
 {
     // LOGD("%s\n", __FUNCTION__);
 
-    threadpoll_t *tp;
+    threadpool_t *tp;
     int i;
-    tp = (threadpoll_t*)malloc(sizeof(threadpoll_t));
+    tp = (threadpool_t*)malloc(sizeof(threadpool_t));
     if (!tp)
         error("malloc threadpool");
 
@@ -140,7 +140,7 @@ threadpoll_t *threadpool_init (int workernum, threadpoll_dynamic_t dynamic)
 
     if (dynamic == fix_num) {
         for (i = 0; i < tp->target_workernum; ++ i) {
-            threadpoll_add_worker(tp);
+            threadpool_add_worker(tp);
         }
         return tp;
     }
@@ -152,16 +152,16 @@ err:
 }
 
 
-int threadpool_add_job(threadpoll_t *tp, job_t *job)
+int threadpool_add_job(threadpool_t *tp, job_t *job)
 {
     LOGD("%s\n", __FUNCTION__);
     int err = 0;
     if (tp == NULL || job->jobfun == NULL)
-        return threadpoll_invalid;
+        return threadpool_invalid;
 
     if (pthread_mutex_lock(&(tp->job_lock)) != 0) {
         LOGD("lock error");
-        return threadpoll_lock_failure;
+        return threadpool_lock_failure;
     }
 
     if (tp->job_head == NULL)
@@ -176,16 +176,16 @@ int threadpool_add_job(threadpoll_t *tp, job_t *job)
     printf("jobsnum %d\n", tp->jobsnum);
 
     if (pthread_cond_signal(&(tp->notify)) != 0) {
-        err = threadpoll_lock_failure;
+        err = threadpool_lock_failure;
     }
 
     if (pthread_mutex_unlock(&(tp->job_lock)) != 0) {
-        err = threadpoll_lock_failure;
+        err = threadpool_lock_failure;
     }
     return err;
 }
 
-void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type)
+void threadpool_destory(threadpool_t *tp, threadpool_shutdown_t shutdown_type)
 {
     if (tp == NULL || tp->shutdown)
         return;

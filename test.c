@@ -17,7 +17,7 @@ void function(void *i)
 int main()
 {
     int i;
-    threadpoll_t *tp;
+    threadpool_t *tp;
     int workernum = 4;
 
     tp = threadpool_init(workernum, fix_num);
