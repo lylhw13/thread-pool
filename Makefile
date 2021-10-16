@@ -7,8 +7,8 @@ PROM = test
 
 all: $(PROM)
 
-test: thread-poll.h thread-poll.c test.c 
-	$(CC) $(CFLAGS) -o test thread-poll.c test.c $(LIBS)
+test: thread-pool.h thread-pool.c test.c 
+	$(CC) $(CFLAGS) -o test thread-pool.c test.c $(LIBS)
 
 clear:
 	rm $(PROM)

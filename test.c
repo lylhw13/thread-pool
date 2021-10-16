@@ -1,4 +1,4 @@
-#include "thread-poll.h"
+#include "thread-pool.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -18,8 +18,9 @@ int main()
 {
     int i;
     threadpoll_t *tp;
+    int workernum = 4;
 
-    tp = threadpoll_init(fix_num);
+    tp = threadpool_init(workernum, fix_num);
 
     for (i = 0; i< 10; ++i) {
         int* j = malloc(sizeof(int));
@@ -27,7 +28,7 @@ int main()
         job->jobfun = function;
         *j = i;
         job->args = j;
-        threadpoll_add_job(tp, job);
+        threadpool_add_job(tp, job);
         // sleep(1);
     }
     // tp->shutdown = shutdown_waitall;

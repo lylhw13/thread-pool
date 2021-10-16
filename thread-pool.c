@@ -1,4 +1,4 @@
-#include "thread-poll.h"
+#include "thread-pool.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -117,7 +117,7 @@ void threadpoll_add_worker(threadpoll_t *tp)
     pthread_mutex_unlock(&(tp->worker_lock));
 }
 
-threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
+threadpoll_t *threadpool_init (int workernum, threadpoll_dynamic_t dynamic)
 {
     // LOGD("%s\n", __FUNCTION__);
 
@@ -130,6 +130,7 @@ threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
     tp->worker_head = NULL;
     tp->jobsnum = 0;
     tp->workersnum = 0;
+    tp->target_workernum = workernum;
     tp->shutdown = no_shutdown;
     tp->dynamic = dynamic;
 
@@ -138,7 +139,7 @@ threadpoll_t *threadpoll_init (threadpoll_dynamic_t dynamic)
     }
 
     if (dynamic == fix_num) {
-        for (i = 0; i < DEFAULT_THREAD_NUM; ++ i) {
+        for (i = 0; i < tp->target_workernum; ++ i) {
             threadpoll_add_worker(tp);
         }
         return tp;
@@ -151,7 +152,7 @@ err:
 }
 
 
-int threadpoll_add_job(threadpoll_t *tp, job_t *job)
+int threadpool_add_job(threadpoll_t *tp, job_t *job)
 {
     LOGD("%s\n", __FUNCTION__);
     int err = 0;
@@ -220,4 +221,9 @@ void threadpool_destory(threadpoll_t *tp, threadpoll_shutdown_t shutdown_type)
         ;
     }
     return;
+}
+
+int threadpool_change_target_workernum(int target)
+{
+    return 0;
 }
