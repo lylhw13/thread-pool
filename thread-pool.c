@@ -39,7 +39,7 @@ begin:
         pthread_mutex_lock(&(tp->worker_lock));
         if (tp->shutdown == shutdown_immediate || 
             (tp->shutdown == shutdown_waitall && tp->jobsnum == 0)) {
-            LOGD("break jobsnum %d\n", tp->jobsnum);
+            // LOGD("break jobsnum %d\n", tp->jobsnum);
             break;
         }
         if (tp->dynamic == fix_num) {
