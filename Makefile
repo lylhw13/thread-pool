@@ -3,12 +3,12 @@ CC = gcc
 
 LIBS = -lpthread
 
-PROM = test
+PROM = test.out
 
 all: $(PROM)
 
-test: thread-pool.h thread-pool.c test.c 
-	$(CC) $(CFLAGS) -o test thread-pool.c test.c $(LIBS)
+test.out: thread-pool.h thread-pool.c ./test/test.c 
+	$(CC) $(CFLAGS) -o ./test/test.out thread-pool.c ./test/test.c $(LIBS)
 
 clear:
 	rm $(PROM)
