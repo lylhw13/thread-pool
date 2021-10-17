@@ -1,14 +1,14 @@
 language: c
+dist: bionic
 
 branches:
   only:
-    - master
-    
+    - main
+
 matrix:
   include:
   - os: linux
     compiler: gcc
-    
-    
+
 script:
   - make
