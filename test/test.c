@@ -18,7 +18,7 @@ void test_dynamic()
     threadpool_t *tp;
     tp = threadpool_init(0, dynamic_num);
     for (i = 0; i< 100; ++i) {
-        j = (int *)malloc(sizeof(int *));
+        j = (int *)malloc(sizeof(int));
         job_t *job = (job_t *)malloc(sizeof(job_t));
         job->jobfun = &function;
         *j = i;
@@ -42,7 +42,7 @@ void test_fix()
     int workernum = 0;
     tp = threadpool_init(workernum, fix_num);
     for (i = 0; i< 100; ++i) {
-        j = (int *)malloc(sizeof(int *));
+        j = (int *)malloc(sizeof(int));
         job_t *job = (job_t *)malloc(sizeof(job_t));
         job->jobfun = function;
         *j = i;
