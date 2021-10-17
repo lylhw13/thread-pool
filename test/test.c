@@ -7,8 +7,8 @@ void function(void *i)
 {
     pthread_t thr;
     thr = pthread_self();
-    LOGD("id %ld print %d\n", (long)thr, *(int*)i);
     sleep(random() % 30);
+    LOGD("id %ld print %d\n", (long)thr, *(int*)i);
 }
 
 void test_dynamic()
@@ -16,10 +16,10 @@ void test_dynamic()
     int i;
     threadpool_t *tp;
     tp = threadpool_init(0, dynamic_num);
-    for (i = 0; i< 100; ++i) {
+    for (i = 0; i< 10; ++i) {
         int* j = malloc(sizeof(int));
         job_t *job = (job_t *)malloc(sizeof(job_t));
-        job->jobfun = function;
+        job->jobfun = &function;
         *j = i;
         job->args = j;
         threadpool_add_job(tp, job);
@@ -28,7 +28,7 @@ void test_dynamic()
     }
 
     LOGD("sleep\n");
-    while(tp->jobsnum > 0)
+    while(tp->jobsnum > 0)  /* don't involve shutdown flag earlier */
         ;
     threadpool_destory(tp, shutdown_waitall);
     return;

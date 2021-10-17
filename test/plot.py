@@ -122,5 +122,3 @@ if __name__ == "__main__":
     ax.grid()
     fig.savefig("dynamic.png")
     plt.show()
-
-    print("hello")
