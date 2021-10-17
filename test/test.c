@@ -14,10 +14,11 @@ void function(void *i)
 void test_dynamic()
 {
     int i;
+    int* j;
     threadpool_t *tp;
     tp = threadpool_init(0, dynamic_num);
-    for (i = 0; i< 10; ++i) {
-        int* j = malloc(sizeof(int));
+    for (i = 0; i< 100; ++i) {
+        j = (int *)malloc(sizeof(int *));
         job_t *job = (job_t *)malloc(sizeof(job_t));
         job->jobfun = &function;
         *j = i;
@@ -27,9 +28,8 @@ void test_dynamic()
             sleep(random() % 30);
     }
 
-    LOGD("sleep\n");
-    while(tp->jobsnum > 0)  /* don't involve shutdown flag earlier */
-        ;
+    while(tp->jobsnum > 0)  
+        ;   /* don't involve shutdown flag earlier */
     threadpool_destory(tp, shutdown_waitall);
     return;
 }
@@ -37,11 +37,12 @@ void test_dynamic()
 void test_fix()
 {
     int i;
+    int *j;
     threadpool_t *tp;
     int workernum = 0;
     tp = threadpool_init(workernum, fix_num);
     for (i = 0; i< 100; ++i) {
-        int* j = malloc(sizeof(int));
+        j = (int *)malloc(sizeof(int *));
         job_t *job = (job_t *)malloc(sizeof(job_t));
         job->jobfun = function;
         *j = i;
@@ -53,9 +54,8 @@ void test_fix()
         }
     }
 
-    LOGD("sleep\n");
     while(tp->jobsnum > 0)
-        ;
+        ;   /* don't involve shutdown flag earlier */
     threadpool_destory(tp, shutdown_waitall);
     return;
 }
