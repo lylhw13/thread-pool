@@ -1,3 +1,6 @@
+![Build Status](https://app.travis-ci.com/lylhw13/thread-pool.svg?token=nASnaJLo16PpGTx3wkq7&branch=main)
+
+
 ## A thread pool in C
 
 Current implement:
