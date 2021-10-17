@@ -1,4 +1,4 @@
-## A thread pool in C
+# A thread pool in C
 
 Current implement:
 - Fix thread mode
@@ -9,7 +9,7 @@ Current implement:
 - Lazy creation of threads
 - Unlimited job queue size
 
-## C 语言线程库
+# C 语言线程库
 
 已实现以下功能：
 - 固定线程数量模式，可以任意调节线程增减
